@@ -57,9 +57,6 @@ M = (Q, Σ, Γ, branco, q0, F, δ)
 
 Para adicionar uma nova, crie uma função em `maquina_turing.py` que monta essa tupla e retorna uma instância de `MaquinaTuring`, seguindo o padrão das funções `exemplo_*` já existentes. Depois, registre-a no dicionário `MAQUINAS_DISPONIVEIS` em `gui.py`.
 
-## Sobre os testes
-
-As máquinas de exemplo (especialmente as que usam estratégias de marcação na fita, como o palíndromo e a mesma quantidade de `0`s/`1`s) foram validadas por **busca exaustiva**: todas as combinações binárias possíveis até um certo tamanho foram geradas e comparadas com o resultado esperado, em vez de depender só de alguns casos de teste manuais. Isso pegou diversos bugs de caso de borda (palavras de tamanho 1, marcas de rodadas anteriores interferindo na rodada seguinte) que não apareceriam com poucos exemplos.
 
 ## Licença
 
