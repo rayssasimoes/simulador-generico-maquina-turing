@@ -1,66 +1,286 @@
-# Simulador de Máquina de Turing
+# Simulador Genérico de Máquina de Turing
 
 Trabalho da disciplina de **Teoria da Computação**.
 
-Simulador genérico de Máquina de Turing com interface gráfica, escrito em Python (Tkinter). Mostra a execução passo a passo: a fita, o estado atual e o diagrama de estados, todos sincronizados em tempo real.
+Este projeto é um simulador de Máquina de Turing com interface gráfica em Python usando Tkinter. Ele permite executar máquinas prontas e também montar uma máquina personalizada pela própria interface, informando estados, alfabeto de entrada, estados finais e transições.
 
-## Como executar
+O simulador mostra a execução passo a passo, incluindo:
 
-Requer apenas Python 3 (Tkinter já vem incluso na instalação padrão)
+- fita;
+- posição da cabeça de leitura/escrita;
+- estado atual;
+- número de passos;
+- última transição executada;
+- diagrama de estados;
+- resultado final: aceita ou rejeita.
 
-1. Navegue até a pasta turing
-2. No terminal execute: **python turing.py**
+## Requisitos
 
+Requer apenas Python 3.
 
-## Como usar
+O projeto usa somente bibliotecas padrão do Python, principalmente:
 
-1. Escolha uma máquina no menu **Máquina**. A descrição abaixo do menu explica o que ela faz.
-2. Digite a palavra de entrada no campo **Palavra de entrada** e clique em **Carregar**.
-3. Use **Passo** para avançar uma transição por vez, ou **Executar** para rodar automaticamente (a barra de **Velocidade** controla o intervalo entre passos).
-4. **Reiniciar** volta ao início com a mesma palavra carregada.
+- `tkinter`
+- `math`
+- `dataclasses`
+- `typing`
 
-A fita é desenhada como uma fileira de células, com uma seta indicando a posição atual da cabeça de leitura/escrita. O diagrama de estados mostra os círculos (estados) e as setas (transições); o estado atual e a última transição percorrida ficam destacados a cada passo.
+Não há dependências externas para instalar com `pip`. O arquivo `requirements.txt` existe apenas para documentar isso.
 
-### Lendo o diagrama de estados
+## Como Executar
 
-- **Seta "início"**: indica o estado inicial.
-- **Círculo duplo**: indica um estado de aceitação.
-- **Auto-loop** (seta saindo e voltando ao mesmo círculo): transição em que o estado não muda.
-- **Rótulo de uma transição** no formato `simbolo_lido;simbolo_escrito;direção`. Por exemplo, `0;1;L` significa: *ao ler `0`, escreve `1` e move a cabeça para a esquerda (L)*. O símbolo `_` representa a célula vazia (branco) da fita. `R` significa mover para a direita.
+Na raiz do projeto, execute:
 
-## Máquinas disponíveis
+```bash
+python turing/turing.py
+```
+
+Se estiver dentro da pasta `turing`, execute:
+
+```bash
+python turing.py
+```
+
+## Como Usar
+
+1. Escolha uma opção no menu **Máquina**.
+2. Digite a palavra no campo **Palavra de entrada**.
+3. Clique em **Carregar** para colocar a palavra na fita.
+4. Use **Passo** para executar uma transição por vez.
+5. Use **Executar** para rodar automaticamente.
+6. Use **Reiniciar** para voltar ao início com a mesma palavra.
+
+## Máquinas Prontas
+
+O simulador possui algumas máquinas já cadastradas:
 
 | Máquina | O que faz |
 |---|---|
-| **Incrementador binário** | Soma 1 a um número binário. Ex.: `1011` → `1100`. |
-| **Verificador de palíndromo** | Aceita palavras binárias iguais lidas de trás para frente, como `1001` ou `111`. |
-| **Verificador de paridade** | Aceita palavras binárias com uma quantidade par de símbolos `1` (zero também é par). |
-| **Reconhecedor de aⁿbⁿ** | Aceita sequências de `a`'s seguidas pela mesma quantidade de `b`'s, como `aabb`. Mostra como a MT consegue "contar", algo que um autômato finito não faz. |
-| **Início e fim com mesmo símbolo** | Aceita palavras cujo primeiro símbolo é igual ao último, como `101` ou `0110`. Palavra vazia ou de 1 símbolo também é aceita. |
-| **Mesma quantidade de 0s e 1s** | Aceita palavras binárias com a mesma quantidade de `0`s e `1`s, em qualquer ordem (não precisa ser `0ⁿ1ⁿ`), como `1010` ou `0011`. |
+| Incrementador binário | Soma 1 a um número binário. Exemplo: `1011` vira `1100`. |
+| Verificador de palíndromo | Aceita palavras binárias iguais lidas de trás para frente, como `1001` ou `111`. |
+| Verificador de paridade | Aceita palavras binárias com quantidade par de símbolos `1`. |
+| Reconhecedor de aⁿbⁿ | Aceita palavras com a mesma quantidade de `a`s seguidos de `b`s, como `aabb`. |
+| Início e fim com mesmo símbolo | Aceita palavras cujo primeiro símbolo é igual ao último, como `101` ou `0110`. |
+| Mesma quantidade de 0s e 1s | Aceita palavras binárias com a mesma quantidade de `0`s e `1`s, em qualquer ordem. |
 
-## Estrutura do projeto
+## Máquina Personalizada
 
+Além das máquinas prontas, a interface possui a opção:
+
+```text
+Maquina personalizada
 ```
+
+Nessa opção, o usuário define a máquina informando:
+
+| Campo | Significado |
+|---|---|
+| `Q estados` | Conjunto de estados da máquina. Exemplo: `q0,q1,qf`. |
+| `Sigma entrada` | Alfabeto de entrada, ou seja, os símbolos permitidos na palavra. Exemplo: `a,b`. |
+| `Simbolos extras da fita` | Símbolos auxiliares que a máquina pode usar na fita. Exemplo: `X,Y,*`. |
+| `q0 inicial` | Estado inicial. Exemplo: `q0`. |
+| `F finais` | Estados de aceitação. Exemplo: `qf`. |
+| `Inicio` | Símbolo de início, se a máquina usar. Exemplo: `*`. |
+| `Delta transicoes` | Função de transição da máquina. |
+
+O símbolo branco da fita é fixo:
+
+```text
+_
+```
+
+Por isso ele não precisa ser digitado em um campo separado.
+
+Internamente, o alfabeto da fita é montado com:
+
+```text
+Sigma entrada + símbolos extras da fita + branco
+```
+
+Exemplo:
+
+```text
+Sigma entrada: a,b
+Simbolos extras da fita: X,Y,*
+```
+
+O programa monta:
+
+```text
+Gamma = a,b,X,Y,*,_
+```
+
+## Transições
+
+Uma transição segue o formato:
+
+```text
+estado_atual,simbolo_lido -> novo_estado,simbolo_escrito,direcao
+```
+
+Exemplo:
+
+```text
+q0,a -> q1,X,R
+```
+
+Isso significa:
+
+```text
+Se a máquina está em q0 e lê a:
+escreve X,
+move para a direita,
+e vai para q1.
+```
+
+Na forma matemática:
+
+```text
+δ(q0, a) = (q1, X, R)
+```
+
+As direções aceitas são:
+
+```text
+R = direita
+L = esquerda
+```
+
+## Montador de Transições
+
+Para facilitar, a interface possui um montador visual de transições.
+
+Em vez de escrever a transição manualmente, o usuário escolhe:
+
+- **Estado atual**
+- **Lê**
+- **Vai para**
+- **Escreve**
+- **Move**
+
+Depois clica em:
+
+```text
+Adicionar transicao
+```
+
+O programa escreve a transição automaticamente no campo `Delta transicoes`.
+
+Também existe o botão:
+
+```text
+Limpar delta
+```
+
+para apagar as transições digitadas.
+
+Depois de definir a máquina, clique em:
+
+```text
+Aplicar maquina
+```
+
+Esse botão cria a máquina personalizada com os dados da tela e atualiza a fita e o diagrama.
+
+## Exemplo de Máquina Personalizada
+
+Exemplo de máquina que aceita qualquer palavra formada por `a` e `b`.
+
+Configuração:
+
+```text
+Q estados: q0,qf
+Sigma entrada: a,b
+Simbolos extras da fita: *
+q0 inicial: q0
+F finais: qf
+Inicio: *
+```
+
+Transições:
+
+```text
+q0,a -> q0,a,R
+q0,b -> q0,b,R
+q0,_ -> qf,_,R
+```
+
+Palavras aceitas:
+
+```text
+a
+b
+abba
+baab
+```
+
+Palavra inválida:
+
+```text
+abc
+```
+
+Nesse caso, `c` não pertence ao alfabeto de entrada `a,b`.
+
+## Regras Validadas
+
+O simulador valida algumas regras da definição formal da Máquina de Turing:
+
+- o estado inicial precisa pertencer a `Q`;
+- os estados finais precisam pertencer a `Q`;
+- o símbolo branco `_` não pode pertencer a `Sigma`;
+- `Sigma` precisa estar contido no alfabeto da fita;
+- transições só podem usar direção `L` ou `R`;
+- transições não podem ler ou escrever símbolos fora do alfabeto da fita;
+- a palavra de entrada só pode conter símbolos de `Sigma`.
+
+Se a máquina chega a uma configuração sem transição definida:
+
+- aceita se estiver em um estado final;
+- rejeita se não estiver em um estado final.
+
+## Estrutura do Projeto
+
+```text
 .
-├── maquina_turing.py   # Lógica pura da MT (sem nenhuma parte visual)
-├── gui.py              # Interface gráfica (Tkinter): fita, diagrama, controles
-└── README.md
+├── README.md
+├── LICENSE
+├── requirements.txt
+└── turing
+    ├── maquina_turing.py
+    └── turing.py
 ```
 
-A separação é intencional: `maquina_turing.py` define a classe `MaquinaTuring` (estados, alfabeto, função de transição, execução passo a passo) e as máquinas de exemplo, sem depender de nenhuma biblioteca de interface. O arquivo `gui.py` importa essa classe e cuida apenas do desenho e da interação com o usuário.
+Descrição dos arquivos:
 
-### Adicionando uma nova máquina
+| Arquivo | Função |
+|---|---|
+| `turing/maquina_turing.py` | Contém a lógica da Máquina de Turing, validações, execução passo a passo e exemplos prontos. |
+| `turing/turing.py` | Contém a interface gráfica em Tkinter, a fita, o diagrama, os controles e o painel da máquina personalizada. |
+| `requirements.txt` | Informa que o projeto não usa dependências externas. |
 
-Toda máquina é definida pela tupla formal clássica de Teoria da Computação:
+## Base Teórica
 
-```python
+O projeto segue a definição clássica de Máquina de Turing:
+
+```text
 M = (Q, Σ, Γ, branco, q0, F, δ)
 ```
 
-Para adicionar uma nova, crie uma função em `maquina_turing.py` que monta essa tupla e retorna uma instância de `MaquinaTuring`, seguindo o padrão das funções `exemplo_*` já existentes. Depois, registre-a no dicionário `MAQUINAS_DISPONIVEIS` em `gui.py`.
+Onde:
 
+```text
+Q       = conjunto finito de estados
+Σ       = alfabeto de entrada
+Γ       = alfabeto da fita
+branco  = símbolo vazio da fita
+q0      = estado inicial
+F       = conjunto de estados finais
+δ       = função de transição
+```
+
+Essa definição é a base usada na disciplina de Teoria da Computação para explicar o funcionamento das Máquinas de Turing.
 
 ## Licença
 
-Ver [LICENSE](LICENSE).
+Consulte o arquivo [LICENSE](LICENSE).
