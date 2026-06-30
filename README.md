@@ -8,6 +8,9 @@ Simulador genérico de Máquina de Turing com interface gráfica, escrito em Pyt
 
 Requer apenas Python 3 (Tkinter já vem incluso na instalação padrão)
 
+1. Navegue até a pasta turing
+2. No terminal execute: **python turing.py**
+
 
 ## Como usar
 
