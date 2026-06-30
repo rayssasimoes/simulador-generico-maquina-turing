@@ -106,11 +106,15 @@ class MaquinaTuring:
             raise ValueError("O alfabeto de entrada precisa estar contido no alfabeto da fita.")
         if self.branco in self.alfabeto_entrada:
             raise ValueError("O símbolo branco não pode pertencer ao alfabeto de entrada.")
-        for (estado, simbolo), (_, direcao, novo_estado) in self.transicoes.items():
+        for (estado, simbolo), (simbolo_escrito, direcao, novo_estado) in self.transicoes.items():
             if estado not in self.estados:
                 raise ValueError(f"Transição usa estado de origem inválido: {estado}")
             if novo_estado not in self.estados:
                 raise ValueError(f"Transição leva a estado inválido: {novo_estado}")
+            if simbolo not in self.alfabeto_fita:
+                raise ValueError(f"Transição lê símbolo fora do alfabeto da fita: {simbolo}")
+            if simbolo_escrito not in self.alfabeto_fita:
+                raise ValueError(f"Transição escreve símbolo fora do alfabeto da fita: {simbolo_escrito}")
             if direcao not in ("L", "R"):
                 raise ValueError(f"Direção inválida em transição: {direcao} (use 'L' ou 'R')")
 
@@ -610,3 +614,161 @@ def exemplo_mesma_quantidade_0s_1s():
 ''' Marca o primeiro '0' e o primeiro '1' não marcados, um par por vez, até sobrar só marcas (aceita) 
 ou a contagem não bater (rejeita). Mostra como a MT usa a fita para 'contar', algo que um autômato 
 finito não conseguiria fazer.'''
+
+def separar_lista(texto):
+    """
+    Converte um texto como:
+        q0,q1,q2
+    em:
+        {"q0", "q1", "q2"}
+    """
+    itens = set()
+
+    for parte in texto.split(","):
+        parte = parte.strip()
+        if parte:
+            itens.add(parte)
+
+    return itens
+
+
+def ler_transicoes(texto_transicoes):
+    """
+    Converte as transicoes escritas pelo usuario em um dicionario.
+
+    Formato esperado por linha:
+
+        estado_atual,simbolo_lido -> novo_estado,simbolo_escrito,direcao
+
+    Exemplo:
+
+        q0,a -> q1,X,R
+        q1,a -> q1,a,R
+        q1,_ -> qf,_,R
+
+    Resultado interno:
+
+        {
+            ("q0", "a"): ("X", "R", "q1"),
+            ("q1", "a"): ("a", "R", "q1"),
+            ("q1", "_"): ("_", "R", "qf"),
+        }
+    """
+    transicoes = {}
+
+    linhas = texto_transicoes.splitlines()
+
+    for numero_linha, linha in enumerate(linhas, start=1):
+        linha = linha.strip()
+
+        if not linha:
+            continue
+
+        if "->" not in linha:
+            raise ValueError(
+                f"Linha {numero_linha}: falta '->'. "
+                "Use o formato: q0,a -> q1,X,R"
+            )
+
+        lado_esquerdo, lado_direito = linha.split("->", 1)
+
+        partes_esquerda = lado_esquerdo.split(",")
+        partes_direita = lado_direito.split(",")
+
+        if len(partes_esquerda) != 2:
+            raise ValueError(
+                f"Linha {numero_linha}: lado esquerdo invalido. "
+                "Use: estado_atual,simbolo_lido"
+            )
+
+        if len(partes_direita) != 3:
+            raise ValueError(
+                f"Linha {numero_linha}: lado direito invalido. "
+                "Use: novo_estado,simbolo_escrito,direcao"
+            )
+
+        estado_atual = partes_esquerda[0].strip()
+        simbolo_lido = partes_esquerda[1].strip()
+
+        novo_estado = partes_direita[0].strip()
+        simbolo_escrito = partes_direita[1].strip()
+        direcao = partes_direita[2].strip().upper()
+
+        if direcao not in ("L", "R"):
+            raise ValueError(
+                f"Linha {numero_linha}: direcao invalida. Use L ou R."
+            )
+
+        chave = (estado_atual, simbolo_lido)
+
+        if chave in transicoes:
+            raise ValueError(
+                f"Linha {numero_linha}: ja existe transicao para "
+                f"({estado_atual}, {simbolo_lido})."
+            )
+
+        transicoes[chave] = (simbolo_escrito, direcao, novo_estado)
+
+    return transicoes
+
+
+def criar_maquina_personalizada(
+    texto_estados,
+    texto_alfabeto_entrada,
+    texto_alfabeto_fita,
+    simbolo_branco,
+    estado_inicial,
+    texto_estados_finais,
+    texto_transicoes,
+    simbolo_inicio="*",
+):
+    """
+    Cria uma MaquinaTuring usando os dados digitados pelo usuario.
+
+    Essa funcao permite montar a maquina pela definicao formal:
+
+        Q      = estados
+        Sigma  = alfabeto de entrada
+        Gamma  = alfabeto da fita
+        branco = simbolo vazio
+        q0     = estado inicial
+        F      = estados finais
+        delta  = funcao de transicao
+
+    O simbolo_inicio fica guardado como informacao extra, caso voce queira
+    mostrar isso na interface depois.
+    """
+    estados = separar_lista(texto_estados)
+    alfabeto_entrada = separar_lista(texto_alfabeto_entrada)
+    alfabeto_fita = separar_lista(texto_alfabeto_fita)
+    alfabeto_fita.update(alfabeto_entrada)
+    estados_finais = separar_lista(texto_estados_finais)
+    transicoes = ler_transicoes(texto_transicoes)
+
+    simbolo_branco = simbolo_branco.strip()
+    estado_inicial = estado_inicial.strip()
+    simbolo_inicio = simbolo_inicio.strip()
+
+    if not simbolo_branco:
+        raise ValueError("O simbolo branco nao pode ficar vazio.")
+
+    alfabeto_fita.add(simbolo_branco)
+
+    if simbolo_inicio:
+        alfabeto_fita.add(simbolo_inicio)
+
+    maquina = MaquinaTuring(
+        estados=estados,
+        alfabeto_entrada=alfabeto_entrada,
+        alfabeto_fita=alfabeto_fita,
+        branco=simbolo_branco,
+        estado_inicial=estado_inicial,
+        estados_aceitacao=estados_finais,
+        transicoes=transicoes,
+        nome="Maquina personalizada",
+        descricao="Maquina definida manualmente pelo usuario.",
+    )
+
+    maquina.simbolo_inicio = simbolo_inicio
+
+    return maquina
