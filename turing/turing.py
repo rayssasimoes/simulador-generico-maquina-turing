@@ -41,6 +41,8 @@ from maquina_turing import (
     exemplo_reconhecedor_anbn,
     exemplo_mesmo_simbolo_extremidades,
     exemplo_mesma_quantidade_0s_1s,
+    criar_maquina_personalizada,
+    separar_lista,
 )
 
 
@@ -71,6 +73,8 @@ ALTURA_CELULA = 50
 ESPACO_CELULA = 6
 
 #maquinas que estap em maquina_turing.py, pro usuario escolher qual usar
+CHAVE_MAQUINA_PERSONALIZADA = "Maquina personalizada"
+
 MAQUINAS_DISPONIVEIS = {
     "Incrementador binário (soma 1)": exemplo_incrementador_binario,
     "Verificador de palíndromo": exemplo_verificador_palindromo,
@@ -78,6 +82,7 @@ MAQUINAS_DISPONIVEIS = {
     "Reconhecedor de aⁿbⁿ": exemplo_reconhecedor_anbn,
     "Início e fim com mesmo símbolo": exemplo_mesmo_simbolo_extremidades,
     "Mesma quantidade de 0s e 1s": exemplo_mesma_quantidade_0s_1s,
+    CHAVE_MAQUINA_PERSONALIZADA: None,
 }
 
 
@@ -135,6 +140,8 @@ class AplicativoMaquinaTuring:
             font=("Segoe UI", 9), anchor="w", justify="left", wraplength=960
         )
         self.label_descricao.pack(side="top", fill="x", padx=16, pady=(0, 8))
+
+        self._montar_painel_personalizado()
 
        
         painel_controles = tk.Frame(self.raiz, bg=COR_FUNDO)
@@ -198,7 +205,6 @@ class AplicativoMaquinaTuring:
         tk.Label(self.raiz, text="Fita", bg=COR_FUNDO, fg=COR_TEXTO,
                  font=("Segoe UI", 10, "bold")).pack(side="bottom", fill="x", padx=16, anchor="w")
 
-        # parte visual do diagrama de estados, ele tem alguns bugs, pprincipalmente com as funçoes de transição :(
         tk.Label(self.raiz, text="Diagrama de estados", bg=COR_FUNDO, fg=COR_TEXTO,
                  font=("Segoe UI", 10, "bold")).pack(side="top", fill="x", padx=16, anchor="w")
 
@@ -206,11 +212,312 @@ class AplicativoMaquinaTuring:
         self.canvas_diagrama.pack(side="top", fill="both", expand=True, padx=16, pady=(4, 8))
         self.canvas_diagrama.bind("<Configure>", lambda e: self._desenhar_diagrama())
 
+    def _montar_painel_personalizado(self):
+        self.painel_personalizado = tk.Frame(self.raiz, bg=COR_FUNDO)
+
+        self.variavel_estados = tk.StringVar(value="q0,qf")
+        self.variavel_alfabeto_entrada = tk.StringVar(value="a")
+        self.variavel_alfabeto_fita = tk.StringVar(value="*")
+        self.variavel_estado_inicial = tk.StringVar(value="q0")
+        self.variavel_estados_finais = tk.StringVar(value="qf")
+        self.variavel_simbolo_inicio = tk.StringVar(value="*")
+
+        tk.Label(
+            self.painel_personalizado,
+            text="Definicao da maquina digitada pelo usuario",
+            bg=COR_FUNDO,
+            fg=COR_TEXTO,
+            font=("Segoe UI", 10, "bold"),
+        ).grid(row=0, column=0, columnspan=6, sticky="w", pady=(0, 6))
+
+        self._criar_campo_personalizado(
+            "Q estados", self.variavel_estados, 1, 0, exemplo="Ex.: q0,q1,qf"
+        )
+        self._criar_campo_personalizado(
+            "Sigma entrada", self.variavel_alfabeto_entrada, 1, 2, exemplo="Ex.: a,b"
+        )
+        self._criar_campo_personalizado(
+            "Simbolos extras da fita", self.variavel_alfabeto_fita, 1, 4, exemplo="Ex.: X,Y,*"
+        )
+        self._criar_campo_personalizado(
+            "q0 inicial", self.variavel_estado_inicial, 3, 0, largura=12, exemplo="Ex.: q0"
+        )
+        self._criar_campo_personalizado(
+            "F finais", self.variavel_estados_finais, 3, 2, exemplo="Ex.: qf"
+        )
+        self._criar_campo_personalizado(
+            "Inicio", self.variavel_simbolo_inicio, 3, 4, largura=8, exemplo="Ex.: *"
+        )
+
+        tk.Label(
+            self.painel_personalizado,
+            text="Delta transicoes:",
+            bg=COR_FUNDO,
+            fg=COR_TEXTO,
+            font=("Segoe UI", 9),
+        ).grid(row=7, column=0, sticky="nw", pady=(6, 0))
+
+        self.texto_transicoes = tk.Text(
+            self.painel_personalizado,
+            height=5,
+            width=78,
+            bg="#181825",
+            fg=COR_TEXTO,
+            insertbackground=COR_TEXTO,
+            relief="flat",
+            font=("Consolas", 10),
+        )
+        self.texto_transicoes.grid(row=7, column=1, columnspan=5, sticky="ew", pady=(6, 0))
+        self.texto_transicoes.insert("1.0", "q0,a -> q0,a,R\nq0,_ -> qf,_,R")
+
+        tk.Label(
+            self.painel_personalizado,
+            text="Ex.: q0,a -> q1,X,R   |   q1,_ -> qf,_,R",
+            bg=COR_FUNDO,
+            fg="#9399b2",
+            font=("Segoe UI", 8),
+        ).grid(row=8, column=1, columnspan=5, sticky="w", pady=(4, 0))
+
+        self._montar_editor_transicao()
+
+        self.botao_aplicar_maquina = tk.Button(
+            self.painel_personalizado,
+            text="Aplicar maquina",
+            command=self._aplicar_maquina_personalizada,
+            bg="#89b4fa",
+            fg=COR_FUNDO,
+            relief="flat",
+            padx=12,
+            pady=5,
+            font=("Segoe UI", 9, "bold"),
+        )
+        self.botao_aplicar_maquina.grid(row=11, column=1, sticky="w", pady=(8, 0))
+
+        for coluna in range(6):
+            self.painel_personalizado.grid_columnconfigure(coluna, weight=1)
+
+        for variavel in (
+            self.variavel_estados,
+            self.variavel_alfabeto_entrada,
+            self.variavel_alfabeto_fita,
+            self.variavel_simbolo_inicio,
+        ):
+            variavel.trace_add("write", lambda *_: self._atualizar_opcoes_transicao())
+
+        self._atualizar_opcoes_transicao()
+
+    def _montar_editor_transicao(self):
+        painel = tk.Frame(self.painel_personalizado, bg=COR_FUNDO)
+        painel.grid(row=9, column=1, columnspan=5, sticky="ew", pady=(8, 0))
+        self.painel_editor_transicao = painel
+
+        self.variavel_transicao_origem = tk.StringVar()
+        self.variavel_transicao_lido = tk.StringVar()
+        self.variavel_transicao_destino = tk.StringVar()
+        self.variavel_transicao_escrito = tk.StringVar()
+        self.variavel_transicao_direcao = tk.StringVar(value="R")
+
+        self.combo_transicao_origem = self._criar_combo_transicao(painel, "Estado atual", self.variavel_transicao_origem, 0)
+        self.combo_transicao_lido = self._criar_combo_transicao(painel, "Le", self.variavel_transicao_lido, 1, largura=8)
+        self.combo_transicao_destino = self._criar_combo_transicao(painel, "Vai para", self.variavel_transicao_destino, 2)
+        self.combo_transicao_escrito = self._criar_combo_transicao(painel, "Escreve", self.variavel_transicao_escrito, 3, largura=8)
+        self.combo_transicao_direcao = self._criar_combo_transicao(painel, "Move", self.variavel_transicao_direcao, 4, largura=6)
+        self.combo_transicao_direcao.configure(values=["R", "L"])
+
+        tk.Button(
+            painel,
+            text="Adicionar transicao",
+            command=self._adicionar_transicao_pelo_montador,
+            bg="#a6e3a1",
+            fg=COR_FUNDO,
+            relief="flat",
+            padx=10,
+            pady=4,
+            font=("Segoe UI", 9, "bold"),
+        ).grid(row=0, column=5, rowspan=2, sticky="s", padx=(10, 4))
+
+        tk.Button(
+            painel,
+            text="Limpar delta",
+            command=self._limpar_transicoes,
+            bg="#585b70",
+            fg=COR_TEXTO,
+            relief="flat",
+            padx=10,
+            pady=4,
+            font=("Segoe UI", 9),
+        ).grid(row=0, column=6, rowspan=2, sticky="s", padx=4)
+
+        tk.Label(
+            self.painel_personalizado,
+            text="Monte a transicao pelas caixas acima; ela sera escrita no Delta automaticamente.",
+            bg=COR_FUNDO,
+            fg="#9399b2",
+            font=("Segoe UI", 8),
+        ).grid(row=10, column=1, columnspan=5, sticky="w", pady=(3, 0))
+
+    def _criar_combo_transicao(self, painel, rotulo, variavel, coluna, largura=12):
+        tk.Label(
+            painel,
+            text=rotulo + ":",
+            bg=COR_FUNDO,
+            fg=COR_TEXTO,
+            font=("Segoe UI", 8),
+        ).grid(row=0, column=coluna, sticky="w")
+
+        combo = ttk.Combobox(
+            painel,
+            textvariable=variavel,
+            state="readonly",
+            width=largura,
+            font=("Consolas", 9),
+        )
+        combo.grid(row=1, column=coluna, sticky="w", padx=(0, 8))
+        return combo
+
+    def _criar_campo_personalizado(self, rotulo, variavel, linha, coluna, largura=18, exemplo=""):
+        tk.Label(
+            self.painel_personalizado,
+            text=rotulo + ":",
+            bg=COR_FUNDO,
+            fg=COR_TEXTO,
+            font=("Segoe UI", 9),
+        ).grid(row=linha, column=coluna, sticky="w", padx=(0, 4), pady=(3, 0))
+
+        tk.Entry(
+            self.painel_personalizado,
+            textvariable=variavel,
+            width=largura,
+            font=("Consolas", 10),
+        ).grid(row=linha, column=coluna + 1, sticky="ew", padx=(0, 12), pady=(3, 0))
+
+        tk.Label(
+            self.painel_personalizado,
+            text=exemplo,
+            bg=COR_FUNDO,
+            fg="#9399b2",
+            font=("Segoe UI", 8),
+        ).grid(row=linha + 1, column=coluna + 1, sticky="w", padx=(0, 12), pady=(0, 5))
+
+    def _atualizar_opcoes_transicao(self):
+        if not hasattr(self, "combo_transicao_origem"):
+            return
+
+        estados = sorted(separar_lista(self.variavel_estados.get()))
+        simbolos = sorted(
+            separar_lista(self.variavel_alfabeto_entrada.get())
+            | separar_lista(self.variavel_alfabeto_fita.get())
+        )
+
+        branco = "_"
+        inicio = self.variavel_simbolo_inicio.get().strip()
+        if branco and branco not in simbolos:
+            simbolos.append(branco)
+        if inicio and inicio not in simbolos:
+            simbolos.append(inicio)
+
+        self.combo_transicao_origem.configure(values=estados)
+        self.combo_transicao_destino.configure(values=estados)
+        self.combo_transicao_lido.configure(values=simbolos)
+        self.combo_transicao_escrito.configure(values=simbolos)
+
+        self._manter_valor_valido(self.variavel_transicao_origem, estados)
+        self._manter_valor_valido(self.variavel_transicao_destino, estados)
+        self._manter_valor_valido(self.variavel_transicao_lido, simbolos)
+        self._manter_valor_valido(self.variavel_transicao_escrito, simbolos)
+
+    def _manter_valor_valido(self, variavel, valores):
+        valor_atual = variavel.get()
+        if valor_atual in valores:
+            return
+        variavel.set(valores[0] if valores else "")
+
+    def _adicionar_transicao_pelo_montador(self):
+        origem = self.variavel_transicao_origem.get().strip()
+        lido = self.variavel_transicao_lido.get().strip()
+        destino = self.variavel_transicao_destino.get().strip()
+        escrito = self.variavel_transicao_escrito.get().strip()
+        direcao = self.variavel_transicao_direcao.get().strip().upper()
+
+        if not all([origem, lido, destino, escrito, direcao]):
+            messagebox.showerror("Transicao invalida", "Preencha todos os campos da transicao.")
+            return
+
+        nova_linha = f"{origem},{lido} -> {destino},{escrito},{direcao}"
+        chave = f"{origem},{lido}"
+        linhas = self.texto_transicoes.get("1.0", "end").splitlines()
+        substituiu = False
+        novas_linhas = []
+
+        for linha in linhas:
+            if linha.strip().startswith(chave + " ->"):
+                novas_linhas.append(nova_linha)
+                substituiu = True
+            elif linha.strip():
+                novas_linhas.append(linha)
+
+        if not substituiu:
+            novas_linhas.append(nova_linha)
+
+        self.texto_transicoes.delete("1.0", "end")
+        self.texto_transicoes.insert("1.0", "\n".join(novas_linhas))
+        self.label_transicao.configure(text=f"Transicao adicionada: {nova_linha}")
+
+    def _limpar_transicoes(self):
+        self.texto_transicoes.delete("1.0", "end")
+        self.label_transicao.configure(text="Delta limpo.")
+
+    def _maquina_personalizada_esta_selecionada(self):
+        return self.variavel_maquina.get() == CHAVE_MAQUINA_PERSONALIZADA
+
+    def _atualizar_visibilidade_painel_personalizado(self):
+        if self._maquina_personalizada_esta_selecionada():
+            self.painel_personalizado.pack(
+                side="top", fill="x", padx=16, pady=(0, 8), after=self.label_descricao
+            )
+        else:
+            self.painel_personalizado.pack_forget()
+
+    def _criar_maquina_personalizada_da_tela(self):
+        return criar_maquina_personalizada(
+            texto_estados=self.variavel_estados.get(),
+            texto_alfabeto_entrada=self.variavel_alfabeto_entrada.get(),
+            texto_alfabeto_fita=self.variavel_alfabeto_fita.get(),
+            simbolo_branco="_",
+            estado_inicial=self.variavel_estado_inicial.get(),
+            texto_estados_finais=self.variavel_estados_finais.get(),
+            texto_transicoes=self.texto_transicoes.get("1.0", "end").strip(),
+            simbolo_inicio=self.variavel_simbolo_inicio.get(),
+        )
+
+    def _aplicar_maquina_personalizada(self):
+        self._parar_execucao_automatica()
+        try:
+            self.maquina = self._criar_maquina_personalizada_da_tela()
+            self.maquina.carregar(self.variavel_entrada.get().strip())
+        except ValueError as erro:
+            messagebox.showerror("Maquina invalida", str(erro))
+            return
+
+        self.label_descricao.configure(text=f"ℹ {self.maquina.descricao}")
+        self.label_resultado.configure(text="")
+        self.label_transicao.configure(text="Maquina personalizada aplicada.")
+        self.aresta_destacada = None
+        self._atualizar_tela()
+
     # iteração
     def _selecionar_maquina(self):
         self._parar_execucao_automatica()
-        fabrica = MAQUINAS_DISPONIVEIS[self.variavel_maquina.get()]
-        self.maquina = fabrica()
+        self._atualizar_visibilidade_painel_personalizado()
+        if self._maquina_personalizada_esta_selecionada():
+            try:
+                self.maquina = self._criar_maquina_personalizada_da_tela()
+            except ValueError as erro:
+                messagebox.showerror("Maquina invalida", str(erro))
+                return
+        else:
+            fabrica = MAQUINAS_DISPONIVEIS[self.variavel_maquina.get()]
+            self.maquina = fabrica()
         self.label_descricao.configure(text=f"ℹ {self.maquina.descricao}")
         self._carregar()
 
@@ -218,9 +525,12 @@ class AplicativoMaquinaTuring:
         self._parar_execucao_automatica()
         palavra = self.variavel_entrada.get().strip()
         try:
+            if self._maquina_personalizada_esta_selecionada():
+                self.maquina = self._criar_maquina_personalizada_da_tela()
+                self.label_descricao.configure(text=f"ℹ {self.maquina.descricao}")
             self.maquina.carregar(palavra)
         except ValueError as erro:
-            messagebox.showerror("Palavra inválida", str(erro))
+            messagebox.showerror("Entrada invalida", str(erro))
             return
         self.label_resultado.configure(text="")
         self.label_transicao.configure(text="")
@@ -339,31 +649,21 @@ class AplicativoMaquinaTuring:
                     fill=COR_CELULA_ATUAL
                 )
 
-    # nao sei
-    # desenho do diagrama de estados, também tem alguns bugs visuais
-    def _calcular_layout(self, n_estados, largura, altura):
-        raio_node = self._raio_node_para(n_estados)
-        usa_duas_camadas = n_estados >= 8
-        estados_por_camada = math.ceil(n_estados / 2) if usa_duas_camadas else max(n_estados, 1)
-
-        margem = 30
-        raio_total_disponivel = max(60, min(largura, altura) / 2 - margem)
-        raio_total_necessario = self._raio_total_minimo(estados_por_camada, raio_node)
-
-        raio_total = max(raio_total_disponivel, raio_total_necessario)
-
-        return raio_node, raio_total, usa_duas_camadas
+    # --- diagrama de estados ---
+    def _desenhar_grade_diagrama(self, canvas, largura, altura):
+        cor = "#252536"
+        passo = 40
+        for x in range(0, int(largura) + 1, passo):
+            canvas.create_line(x, 0, x, altura, fill=cor)
+        for y in range(0, int(altura) + 1, passo):
+            canvas.create_line(0, y, largura, y, fill=cor)
 
     def _raio_node_para(self, n_estados):
         if n_estados <= 4:
             return 28
         if n_estados <= 6:
-            return 25
-        return 22
-
-    def _raio_total_minimo(self, estados_por_camada, raio_node, distancia_minima=66):
-        n = max(estados_por_camada, 3)
-        return (distancia_minima + 2 * raio_node) / (2 * math.sin(math.pi / n))
+            return 24
+        return 20
 
     def _abreviar_nome_estado(self, estado, raio_node):
         limite = 9 if raio_node >= 26 else (7 if raio_node >= 20 else 5)
@@ -377,32 +677,66 @@ class AplicativoMaquinaTuring:
                 return abreviado
         return estado[:limite - 1] + "…"
 
-    def _calcular_posicoes_estados(self, largura, altura, raio_node, raio_total, usa_duas_camadas):
-        estados = sorted(self.maquina.estados)
-        n = len(estados)
-        centro_x, centro_y = largura / 2, altura / 2
-        raio_max = raio_total - raio_node
+    def _calcular_posicoes_estados(self, largura, altura, raio_node):
+        cx = largura / 2
+        cy = altura / 2 + 10
+        margem_x = raio_node + 55
+        margem_y = raio_node + 40
+        rx = max(90, largura / 2 - margem_x)
+        ry = max(70, altura / 2 - margem_y)
 
+        aceitos = sorted(e for e in self.maquina.estados if e in self.maquina.estados_aceitacao)
+        anel = sorted(e for e in self.maquina.estados if e not in aceitos)
         posicoes = {}
 
-        if not usa_duas_camadas:
-            for i, estado in enumerate(estados):
-                angulo = -math.pi / 2 + (2 * math.pi * i / n if n else 0)
-                x = centro_x + raio_max * math.cos(angulo)
-                y = centro_y + raio_max * math.sin(angulo)
-                posicoes[estado] = (x, y)
+        topo = margem_y + raio_node
+        for estado in aceitos:
+            posicoes[estado] = (cx, topo)
+
+        if not anel:
+            return posicoes, cx, cy
+
+        inicial = self.maquina.estado_inicial
+        if inicial in anel:
+            anel.remove(inicial)
+            ordem = [inicial] + sorted(anel)
         else:
-            raio_externo = raio_max
-            raio_interno = raio_max * 0.46
+            ordem = anel
 
-            for i, estado in enumerate(estados):
-                angulo = -math.pi / 2 + (2 * math.pi * i / n)
-                raio_estado = raio_externo if i % 2 == 0 else raio_interno
-                x = centro_x + raio_estado * math.cos(angulo)
-                y = centro_y + raio_estado * math.sin(angulo)
-                posicoes[estado] = (x, y)
+        n = len(ordem)
+        angulo_inicio = math.radians(35)
+        for i, estado in enumerate(ordem):
+            angulo = angulo_inicio + (2 * math.pi * i / n)
+            posicoes[estado] = (cx + rx * math.cos(angulo), cy + ry * math.sin(angulo))
 
-        return posicoes
+        return posicoes, cx, cy
+
+    def _preparar_arestas(self, arestas):
+        saidas = {}
+        entradas = {}
+        for aresta in arestas:
+            if aresta["laco"]:
+                continue
+            o, d = aresta["origem"], aresta["destino"]
+            saidas.setdefault(o, []).append(aresta)
+            entradas.setdefault(d, []).append(aresta)
+
+        for lista in saidas.values():
+            lista.sort(key=lambda a: a["destino"])
+            total = len(lista)
+            for i, aresta in enumerate(lista):
+                aresta["_fan_out"] = i - (total - 1) / 2
+
+        for lista in entradas.values():
+            lista.sort(key=lambda a: a["origem"])
+            total = len(lista)
+            for i, aresta in enumerate(lista):
+                aresta["_fan_in"] = i - (total - 1) / 2
+
+    def _vetor_exterior(self, x, y, cx, cy):
+        dx, dy = x - cx, y - cy
+        dist = math.hypot(dx, dy) or 1
+        return dx / dist, dy / dist
 
     def _desenhar_diagrama(self):
         if self.maquina is None:
@@ -411,21 +745,59 @@ class AplicativoMaquinaTuring:
         canvas.delete("all")
 
         largura = canvas.winfo_width() or 960
-        altura = canvas.winfo_height() or 260
-        n_estados = len(self.maquina.estados)
+        altura = canvas.winfo_height() or 300
+        raio_node = self._raio_node_para(len(self.maquina.estados))
 
-        raio_node, raio_total, usa_duas_camadas = self._calcular_layout(n_estados, largura, altura)
-        posicoes = self._calcular_posicoes_estados(largura, altura, raio_node, raio_total, usa_duas_camadas)
+        self._desenhar_grade_diagrama(canvas, largura, altura)
+        posicoes, centro_x, centro_y = self._calcular_posicoes_estados(largura, altura, raio_node)
 
-        
-        for aresta in self.maquina.lista_de_arestas():
-            self._desenhar_aresta(canvas, aresta, posicoes, raio_node)
+        arestas = self.maquina.lista_de_arestas()
+        self._preparar_arestas(arestas)
 
-     
+        rotulos = []
+        for aresta in arestas:
+            if aresta["laco"]:
+                continue
+            info = self._desenhar_seta(
+                canvas, aresta, posicoes, "\n".join(aresta["rotulos"]),
+                COR_ARESTA_ATIVA if self.aresta_destacada == (aresta["origem"], aresta["destino"]) else COR_ARESTA,
+                COR_ROTULO_ARESTA_ATIVA if self.aresta_destacada == (aresta["origem"], aresta["destino"]) else COR_ROTULO_ARESTA,
+                3 if self.aresta_destacada == (aresta["origem"], aresta["destino"]) else 1.5,
+                raio_node,
+            )
+            if info:
+                rotulos.append(info)
+
         for estado, (x, y) in posicoes.items():
-            self._desenhar_estado(canvas, estado, x, y, raio_node)
+            self._desenhar_estado(canvas, estado, x, y, raio_node, centro_x, centro_y)
 
-    def _desenhar_estado(self, canvas, estado, x, y, raio_node):
+        for aresta in arestas:
+            if not aresta["laco"]:
+                continue
+            ativa = self.aresta_destacada == (aresta["origem"], aresta["destino"])
+            info = self._desenhar_laco(
+                canvas, aresta["origem"], posicoes, "\n".join(aresta["rotulos"]),
+                COR_ARESTA_ATIVA if ativa else COR_ARESTA,
+                COR_ROTULO_ARESTA_ATIVA if ativa else COR_ROTULO_ARESTA,
+                3 if ativa else 1.5, raio_node, centro_x, centro_y,
+            )
+            if info:
+                rotulos.append(info)
+
+        for info in rotulos:
+            self._desenhar_rotulo(canvas, *info)
+
+    def _desenhar_rotulo(self, canvas, x, y, texto, cor, negrito=False):
+        if not texto:
+            return
+        fonte = ("Consolas", 8, "bold" if negrito else "normal")
+        fundo = canvas.create_rectangle(x, y, x, y, fill=COR_FUNDO, outline="#45475a", width=1)
+        texto_id = canvas.create_text(x, y, text=texto, fill=cor, font=fonte, justify="center")
+        x1, y1, x2, y2 = canvas.bbox(texto_id)
+        canvas.coords(fundo, x1 - 4, y1 - 2, x2 + 4, y2 + 2)
+        canvas.tag_raise(texto_id, fundo)
+
+    def _desenhar_estado(self, canvas, estado, x, y, raio_node, centro_x, centro_y):
         e_atual = (estado == self.maquina.estado_atual)
         e_inicial = (estado == self.maquina.estado_inicial)
         e_aceitacao = (estado in self.maquina.estados_aceitacao)
@@ -435,16 +807,16 @@ class AplicativoMaquinaTuring:
         cor_texto = COR_NODE_ATUAL_TEXTO if e_atual else COR_NODE_TEXTO
         espessura_borda = 3 if e_atual else 2
 
-       
         if e_inicial:
-            ponta_x = x - raio_node
-            origem_x = ponta_x - 26
-            canvas.create_line(origem_x, y, ponta_x - 2, y,
-                                fill=COR_NODE_BORDA, width=2, arrow=tk.LAST)
-            canvas.create_text(origem_x - 12, y, text="início", fill="#9399b2",
-                                font=("Segoe UI", 8, "italic"), anchor="e")
+            out_x, out_y = self._vetor_exterior(x, y, centro_x, centro_y)
+            px = x + out_x * (raio_node - 2)
+            py = y + out_y * (raio_node - 2)
+            ox = x + out_x * (raio_node + 36)
+            oy = y + out_y * (raio_node + 36)
+            canvas.create_line(ox, oy, px, py, fill=COR_NODE_BORDA, width=2, arrow=tk.LAST)
+            canvas.create_text(ox + out_x * 16, oy + out_y * 16, text="início",
+                                fill="#9399b2", font=("Segoe UI", 8, "italic"))
 
-        # estado de aceitação
         if e_aceitacao:
             canvas.create_oval(x - raio_node - 5, y - raio_node - 5,
                                 x + raio_node + 5, y + raio_node + 5,
@@ -453,84 +825,85 @@ class AplicativoMaquinaTuring:
         canvas.create_oval(x - raio_node, y - raio_node, x + raio_node, y + raio_node,
                             fill=cor_fundo, outline=cor_borda, width=espessura_borda)
 
-        nome_exibido = self._abreviar_nome_estado(estado, raio_node)
-        tamanho_fonte = 10 if raio_node >= 26 else (9 if raio_node >= 22 else 8)
-        canvas.create_text(x, y, text=nome_exibido, fill=cor_texto,
-                            font=("Segoe UI", tamanho_fonte, "bold"), width=raio_node * 2 - 4)
+        nome = self._abreviar_nome_estado(estado, raio_node)
+        tamanho = 10 if raio_node >= 26 else (9 if raio_node >= 22 else 8)
+        canvas.create_text(x, y, text=nome, fill=cor_texto,
+                            font=("Segoe UI", tamanho, "bold"), width=raio_node * 2 - 4)
 
-    def _desenhar_aresta(self, canvas, aresta, posicoes, raio_node):
-        origem, destino = aresta["origem"], aresta["destino"]
-        rotulo = ", ".join(aresta["rotulos"])
-        ativa = (self.aresta_destacada == (origem, destino))
-        cor = COR_ARESTA_ATIVA if ativa else COR_ARESTA
-        cor_rotulo = COR_ROTULO_ARESTA_ATIVA if ativa else COR_ROTULO_ARESTA
-        espessura = 3 if ativa else 1.5
-
-        if aresta["laco"]:
-            self._desenhar_laco(canvas, origem, posicoes, rotulo, cor, cor_rotulo,
-                                 espessura, raio_node)
-        else:
-            self._desenhar_seta_entre_estados(canvas, origem, destino, posicoes,
-                                               rotulo, cor, cor_rotulo, espessura, raio_node)
+    def _pontos_curva(self, x1, y1, cx, cy, x2, y2, segmentos=14):
+        pontos = []
+        for i in range(segmentos + 1):
+            t = i / segmentos
+            u = 1 - t
+            pontos.extend([
+                u * u * x1 + 2 * u * t * cx + t * t * x2,
+                u * u * y1 + 2 * u * t * cy + t * t * y2,
+            ])
+        return pontos
 
     def _desenhar_laco(self, canvas, estado, posicoes, rotulo, cor, cor_rotulo,
-                        espessura, raio_node):
-        
+                        espessura, raio_node, centro_x, centro_y):
         x, y = posicoes[estado]
-        topo_y = y - raio_node
+        out_x, out_y = self._vetor_exterior(x, y, centro_x, centro_y)
 
-        raio_laco = raio_node * 0.85
-        centro_laco_y = topo_y - raio_laco * 0.55
+        # estado inicial já tem seta "início" — laço vai pro lado
+        if estado == self.maquina.estado_inicial:
+            dir_x, dir_y = -out_y, out_x
+        else:
+            dir_x, dir_y = out_x, out_y
 
-       
-        pontos = []
-        angulo_inicio, angulo_fim = math.radians(-15), math.radians(195)
-        n_pontos = 24
-        for i in range(n_pontos + 1):
-            t = angulo_inicio + (angulo_fim - angulo_inicio) * i / n_pontos
-            px = x - raio_laco * math.cos(t)
-            py = centro_laco_y - raio_laco * 0.8 * math.sin(t)
-            pontos.append((px, py))
+        angulo = math.atan2(dir_y, dir_x)
+        abertura = math.radians(42)
+        dist = raio_node * 2.1
 
-        coords = [coord for ponto in pontos for coord in ponto]
+        x1 = x + raio_node * math.cos(angulo - abertura)
+        y1 = y + raio_node * math.sin(angulo - abertura)
+        x2 = x + raio_node * math.cos(angulo + abertura)
+        y2 = y + raio_node * math.sin(angulo + abertura)
+        cx = x + math.cos(angulo) * dist
+        cy = y + math.sin(angulo) * dist
+
         canvas.create_line(
-            *coords, fill=cor, width=espessura + 0.5, smooth=True,
-            arrow=tk.LAST, arrowshape=(11, 13, 5)
+            *self._pontos_curva(x1, y1, cx, cy, x2, y2),
+            fill=cor, width=espessura, arrow=tk.LAST, arrowshape=(10, 12, 4)
         )
 
-        canvas.create_text(x, centro_laco_y - raio_laco * 0.8 - 12, text=rotulo,
-                            fill=cor_rotulo, font=("Consolas", 8, "bold" if espessura > 2 else "normal"))
+        rx = cx + math.cos(angulo) * 24
+        ry = cy + math.sin(angulo) * 24
+        return (rx, ry, rotulo, cor_rotulo, espessura > 2)
 
-    def _desenhar_seta_entre_estados(self, canvas, origem, destino, posicoes,
-                                      rotulo, cor, cor_rotulo, espessura, raio_node):
+    def _desenhar_seta(self, canvas, aresta, posicoes, rotulo, cor, cor_rotulo,
+                        espessura, raio_node):
+        origem, destino = aresta["origem"], aresta["destino"]
         x1, y1 = posicoes[origem]
         x2, y2 = posicoes[destino]
 
         dx, dy = x2 - x1, y2 - y1
-        distancia = math.hypot(dx, dy) or 1
-        ux, uy = dx / distancia, dy / distancia  
-
-      
-        inicio_x, inicio_y = x1 + ux * raio_node, y1 + uy * raio_node
-        fim_x, fim_y = x2 - ux * raio_node, y2 - uy * raio_node
-
-        
-        meio_x, meio_y = (inicio_x + fim_x) / 2, (inicio_y + fim_y) / 2
+        dist = math.hypot(dx, dy) or 1
+        ux, uy = dx / dist, dy / dist
         perp_x, perp_y = -uy, ux
-        deslocamento_curva = 26
-        controle_x = meio_x + perp_x * deslocamento_curva
-        controle_y = meio_y + perp_y * deslocamento_curva
+
+        ix, iy = x1 + ux * raio_node, y1 + uy * raio_node
+        fx, fy = x2 - ux * raio_node, y2 - uy * raio_node
+        mx, my = (ix + fx) / 2, (iy + fy) / 2
+
+        sinal = 1 if origem <= destino else -1
+        fan_out = aresta.get("_fan_out", 0)
+        fan_in = aresta.get("_fan_in", 0)
+        curva = sinal * 28 + fan_out * 16 + fan_in * 12
+
+        cx_pt = mx + perp_x * curva
+        cy_pt = my + perp_y * curva
 
         canvas.create_line(
-            inicio_x, inicio_y, controle_x, controle_y, fim_x, fim_y,
+            ix, iy, cx_pt, cy_pt, fx, fy,
             fill=cor, width=espessura, smooth=True, arrow=tk.LAST, arrowshape=(10, 12, 4)
         )
 
-        
-        rotulo_x = controle_x + perp_x * 14
-        rotulo_y = controle_y + perp_y * 14
-        canvas.create_text(rotulo_x, rotulo_y, text=rotulo, fill=cor_rotulo,
-                            font=("Consolas", 8))
+        desloc = 26 + abs(fan_out) * 5 + abs(fan_in) * 4
+        rx = cx_pt + perp_x * desloc
+        ry = cy_pt + perp_y * desloc
+        return (rx, ry, rotulo, cor_rotulo, espessura > 2)
 
 
 def main():
